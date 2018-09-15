@@ -1,0 +1,13 @@
+* [[http://www.nativefloripa.com.br][Native Floripa]] 2018
+
+*Título:* Coruja: uma alternativa ao padrão observador em C++11
+*Resumo:* Coruja é uma biblioteca escrita em C++11 que utiliza o
+paradigma da programação genérica (GP) e conceitos de programação
+funcional (FP) para apresentar uma solução alternativa ao padrão
+observador (ObserverPattern - GoF). O trabalho propõem abstrações para
+evitar código boilerplate e a inversão de controle (IoC).
+https://github.com/ricardocosme/coruja
+
+*Local:* ACATE
+*Data:* 22/09/18
+*Horário:* 14h30 às 15h30
