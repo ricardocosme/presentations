@@ -1,0 +1,1737 @@
+%!TEX program = xelatex
+
+% Name           : hsrm-beamer-demo.sty
+% Author         : Benjamin Weiss (benjamin.weiss@kreatiefton.de)
+% Version        : 0.4
+% Created on     : 05.05.2013
+% Last Edited on : 24.03.2014
+% Copyright      : Copyright (c) 2013-2014 by Benjamin Weiss. All rights reserved.
+% License        : This file may be distributed and/or modified under the
+%                  GNU Public License.
+% Description    : HSRM beamer theme demonstration. Also includes a short 
+%                  Tutorial regarding the beamer class.
+
+\documentclass[compress]{beamer}
+%--------------------------------------------------------------------------
+% Common packages
+%--------------------------------------------------------------------------
+\usepackage[portuguese]{babel}
+\usepackage{pgfplots}
+\usepackage{array}
+\usepackage{graphicx}
+\usepackage{multicol}
+% Erweiterte Tabellenfunktionen
+\usepackage{tabularx,ragged2e}
+\usepackage{booktabs}
+% Listingserweiterung
+\usepackage{pgf, pgffor}
+\usepackage{listings}
+\usepackage{dirtree}
+\usepackage{lstlinebgrd}
+
+\usepackage{hyperref}
+\usepackage{fontspec}
+\usepackage{siunitx}
+\sisetup{math-micro=\text{µ},text-micro=µ}
+
+\makeatletter
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% \btIfInRange{number}{range list}{TRUE}{FALSE}
+%
+% Test in int number <number> is element of a (comma separated) list of ranges
+% (such as: {1,3-5,7,10-12,14}) and processes <TRUE> or <FALSE> respectively
+
+\newcount\bt@rangea
+\newcount\bt@rangeb
+
+\newcommand\btIfInRange[2]{%
+    \global\let\bt@inrange\@secondoftwo%
+    \edef\bt@rangelist{#2}%
+    \foreach \range in \bt@rangelist {%
+        \afterassignment\bt@getrangeb%
+        \bt@rangea=0\range\relax%
+        \pgfmathtruncatemacro\result{ ( #1 >= \bt@rangea) && (#1 <= \bt@rangeb) }%
+        \ifnum\result=1\relax%
+            \breakforeach%
+            \global\let\bt@inrange\@firstoftwo%
+        \fi%
+    }%
+    \bt@inrange%
+}
+\newcommand\bt@getrangeb{%
+    \@ifnextchar\relax%
+        {\bt@rangeb=\bt@rangea}%
+        {\@getrangeb}%
+}
+\def\@getrangeb-#1\relax{%
+    \ifx\relax#1\relax%
+        \bt@rangeb=100000%   \maxdimen is too large for pgfmath
+    \else%
+        \bt@rangeb=#1\relax%
+    \fi%
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% \btLstHL<overlay spec>{range list}
+%
+% TODO BUG: \btLstHL commands can not yet be accumulated if more than one overlay spec match.
+% 
+\newcommand<>{\btLstHL}[1]{%
+  \only#2{\btIfInRange{\value{lstnumber}}{#1}{\color{yellow!20}\def\lst@linebgrdcmd{\color@block}}{\def\lst@linebgrdcmd####1####2####3{}}}%
+}%
+\makeatother
+
+\lstdefinestyle{emph}{
+  % keywordstyle=\color{orange}\bfseries
+  linebackgroundcolor=\color{orange!15}
+}
+
+\lstset{
+literate={~} {$\sim$}{1}, % set tilde as a literal (no process)
+escapeinside=@@,
+language=c++,
+% basicstyle=\small,
+basicstyle=\normalsize\sffamily,
+keywordstyle=\color{hsrmSec1Dark}\bfseries,
+stringstyle=\color{red},
+commentstyle=\color{gray},
+morecomment=[l][\color{magenta}]{\#},
+numbers=left,
+numberstyle=\tiny\ttfamily,
+stepnumber=1,
+showspaces=false,
+showstringspaces=false,
+showtabs=false,
+breaklines=true,
+% frame=tb,
+framerule=0.5pt,
+tabsize=2,
+framexleftmargin=0.5em,
+framexrightmargin=0.5em,
+xleftmargin=0.5em,
+xrightmargin=0.5em,
+}
+
+%--------------------------------------------------------------------------
+% Load theme
+%--------------------------------------------------------------------------
+\usetheme{hsrm}
+
+% \usepackage{dtklogos} % must be loaded after theme
+\usepackage{tikz}
+\usetikzlibrary{mindmap,backgrounds}
+
+%--------------------------------------------------------------------------
+% General presentation settings
+%--------------------------------------------------------------------------
+\title{Deprecando Singleton(Gof)}
+\subtitle{Uma abordagem mais flexível que evita o suício de objetos}
+\date{\today}
+\author{Ricardo Cosme}
+\institute{Instituto Tecgraf de Desenvolvimento de \\ Software Técnico-Científico da PUC-Rio\\{\Medium Tecgraf/PUC-Rio}}
+
+%--------------------------------------------------------------------------
+% Notes settings
+%--------------------------------------------------------------------------
+\setbeameroption{show notes}
+
+\begin{document}
+%--------------------------------------------------------------------------
+% Titlepage
+%--------------------------------------------------------------------------
+
+\maketitle
+
+%\begin{frame}[plain]
+%	\titlepage
+%\end{frame}
+
+%--------------------------------------------------------------------------
+% Table of contents
+%--------------------------------------------------------------------------
+% \section*{Seções}
+% \begin{frame}{Seções}
+% 	% hideallsubsections ist empfehlenswert für längere Präsentationen
+% 	\tableofcontents[hideallsubsections]
+% \end{frame}
+
+%--------------------------------------------------------------------------
+% Content
+%--------------------------------------------------------------------------
+\section{Padrão Singleton}
+
+\begin{frame}[containsverbatim]{Padrão Singleton}
+\begingroup
+\setbeamercolor{block title}{bg=hsrmSec2Dark}
+\setbeamercolor{block body}{bg=hsrmSec2}
+\begin{block}{Objetivo}
+  Instância {\Medium única} de uma classe que é obtida através de um ponto de acesso {\Medium global}. 
+\footnote{Design Patterns: Elements Of Reusable Object-Oriented Software (1994, Addison Wesley)}
+\end{block}
+\endgroup
+\end{frame}
+
+\begin{frame}{Em suma}
+  Singleton = global + instância única
+\end{frame}
+
+\begin{frame}{Globais}
+  Globais não são bem-vindas
+	\begin{itemize}
+		\item<1->Compartilhamento de estado
+      \begin{itemize}
+      \item<1->Condições de corrida (computação moderna)
+      \item<2->Ineficiência na alocação e liberação de recursos
+      \item<3->Não há garantia de ordem na inicialização entres TUs
+      \item<4->Impossibilidade de \textit{reasoning} do código
+      \end{itemize}
+	\end{itemize}
+\end{frame}
+
+\begin{frame}{Instâncias}
+  Classes não deveriam ser responsáveis pelo \textit{lifetime} de instâncias
+	\begin{itemize}
+		\item<1->Lógica estranha em C++
+		\item<2->Hoje é {\Medium uma} instância, amanhã pode ser {\Medium N}
+		\item<3->Por que sou obrigado a usar alocação dinâmica?
+	\end{itemize}
+\end{frame}
+
+\begin{frame}{Please!}
+	\begin{itemize}
+		\item<1-> Pare de usar \textit{Singletons} indiscriminadamente
+		\item<2-> Suícidio não é bom na vida real nem na programação
+      \begin{itemize}
+      \item<2-> \texttt{delete this;}
+      \end{itemize}
+	\end{itemize}
+\end{frame}
+
+\begin{frame}{Guideline}
+	\begin{itemize}
+		\item<1-> Classe não cria instâncias próprias
+		\item<2-> Classe não é responsável por sua destruição
+		\item<3-> Classe não assume se será instanciada dinamicamente ou não
+		\item<4-> Procure energicamente por um pai para o objeto
+	\end{itemize}
+\end{frame}
+
+\subsection{Modelo}
+\begin{frame}[fragile,t]{Observer}
+\begin{lstlisting}[
+    gobble=0,
+    linebackgroundcolor={%
+      \btLstHL<1>{0}%
+      \btLstHL<2>{1}%
+      \btLstHL<3>{2}%
+      \btLstHL<4->{3}%
+    }]
+class ToolXPresenter {
+    ToolXPresenter() = default;
+    ToolXPresenter* _instance;
+public:    
+    static ToolXPresenter* instance()
+    {
+        if(!_instance)
+            _instance = new ToolXPresenter();
+        return _instance;
+    }
+};
+
+void MainPresenter::openToolX() 
+{ ToolXPresenter::instance()->show(); }
+\end{lstlisting}
+\only<2>{
+Pouco flexível.
+\begin{itemize}
+\item Preciso somente de uma função.
+\end{itemize}
+}
+\only<3>{
+Polimorfismo através de herança.
+\begin{itemize}
+  \item{Restringe demasiadamente o design de quem usa.}
+\end{itemize}
+}
+\only<4->{
+\begin{enumerate}
+  \item<4->{O que mudou?}
+  \item<5->{Uma única função para todas as reações (complexidade).}
+\end{enumerate}
+}
+\end{frame}
+
+\begin{frame}[fragile,t]{Subject (Observable)}
+\begin{lstlisting}[
+    gobble=0,
+    linebackgroundcolor={%
+      \btLstHL<1>{0}%
+      \btLstHL<2>{2}%
+      \btLstHL<3>{3,4}%
+      \btLstHL<4-5>{5}%
+    }]
+struct subject {
+  virtual ~subject() = default;
+  virtual void attach(observer&);
+  virtual void detach(observer&);
+  virtual void notify();
+
+  list<observer*> observers;
+};
+\end{lstlisting}
+\only<2>{
+Polimorfismo através de herança.
+\begin{itemize}
+  \item{Restringe demasiadamente o design de quem usa.}
+\end{itemize}
+}
+\only<3>{Demasiadamente operacional (baixo nível).}
+\only<4-5>{
+\begin{enumerate}
+\item<4->{Notificação global.}
+\begin{itemize}
+  \item<4->{O que mudou?}
+\end{itemize}
+\item<5->{Notificação manual.}
+\end{enumerate}
+}
+\end{frame}
+
+\subsection{Signals\&Slots}
+\begin{frame}[fragile,t]{Signals\&Slots}
+\lstset{numbers=none}
+\begin{lstlisting}
+//Signal (Observable)
+signal<void(string)> name_sig;
+\end{lstlisting}
+
+\only<2->{
+\begingroup
+\setbeamercolor{block title}{bg=hsrmSec2Dark}
+\setbeamercolor{block body}{bg=hsrmSec2}
+\begin{block}{Soluciona}
+\begin{itemize}
+\item<2->{Composição ao invés de herança}
+\item<3->{Específico para um atributo: \texttt{name}}
+\end{itemize}
+\end{block}
+\endgroup
+}
+\end{frame}
+
+\begin{frame}[fragile,t]{Signals\&Slots}
+\lstset{numbers=none}
+\begin{lstlisting}[
+    gobble=0,
+    linebackgroundcolor={%
+      \btLstHL<1>{2-3}%
+      \btLstHL<2>{2-3}%
+      \btLstHL<3>{5}%
+      \btLstHL<4>{7}%
+    }]
+//Slot (Observer) attach() 
+auto conn = name_sig.connect
+  ([](string name){do_something(name);});
+
+name_sig("abc"); //notify() 
+
+conn.disconnect(); //detach()
+\end{lstlisting}
+
+\begingroup
+\setbeamercolor{block title}{bg=hsrmSec2Dark}
+\setbeamercolor{block body}{bg=hsrmSec2}
+\begin{block}{Soluciona}
+\begin{itemize}
+\item<1->{\emph{Observer} é simplesmente um function object.}
+\item<2->{Função só se preocupa com uma coisa: \texttt{name}.}
+\end{itemize}
+\end{block}
+\endgroup
+\end{frame}
+
+\begin{frame}[fragile,t]{Signals\&Slots}
+\begin{alertblock}{É suficiente?}
+  \begin{itemize}
+    \item<1-> Inversão de Controle(IoC) (callbacks)
+    \item<2-> Notificação manual
+    \item<3-> Código boilerplate
+    \item<4-> Dependência da ordem de registro de slots
+    \item<5-> Complexidade em compor observáveis (sinais)
+  \end{itemize}
+\end{alertblock}
+\end{frame}
+
+\section{Objetos observáveis}
+
+\subsection{Signals&Slots}
+\begin{frame}[fragile,t]{Problema \#1}
+\lstset{basicstyle=\footnotesize\sffamily}
+\begin{lstlisting}
+struct person_t {
+  string first_name, surname;
+};
+\end{lstlisting}
+\only<2>{Problema \#1: Reagir a alteração de first\_name ou surname}
+\end{frame}
+
+\subsection{Signals&Slots}
+\begin{frame}[fragile,t]{Problema \#1 - Solução Ad Hoc}
+\lstset{basicstyle=\footnotesize\sffamily}
+\begin{lstlisting}[
+    gobble=0,
+    linebackgroundcolor={%
+      \btLstHL<1>{2,8,12}%
+    }]
+struct person_t {
+  //setter
+  void first_name(string v) {
+      _first_name = move(v);
+      _change_first_name(_first_name);
+  }
+
+  //getter
+  const string& first_name() const noexcept
+  { return _first_name; }
+
+  //connect
+  template<typename F>
+  void change_first_name(F&& f)
+  { _change_first_name.connect(forward<F>(f)); }
+private:
+  signal<void(const string&)> _change_first_name;
+  string _first_name;
+};
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile,t]{Problema \#1 - Solução Ad Hoc}
+\lstset{basicstyle=\tiny\sffamily}
+\begin{lstlisting}
+struct person_t {
+  void first_name(string v) {
+      _first_name = move(v);
+      _change_first_name(_first_name);
+  }
+
+  const string& first_name() const noexcept
+  { return _first_name; }
+  
+  template<typename F>
+  void change_first_name(F&& f)
+  { _change_first_name.connect(forward<F>(f)); }
+
+  void surname(string v) {
+      _surname = move(v);
+      _change_surname(_surname);
+  }
+
+  const string& surname() const noexcept
+  { return _surname; }
+  
+  template<typename F>
+  void change_surname(F&& f)
+  { _change_surname.connect(forward<F>(f)); }
+private:
+  signal<void(const string&)> _change_first_name, _change_surname;
+  string _first_name, _surname;
+};
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile,t]{Problema \#1 - Solução Coruja}
+\lstset{basicstyle=\footnotesize\sffamily}
+\begin{lstlisting}[
+    gobble=0,
+    linebackgroundcolor={%
+      \btLstHL<1->{2}%
+    }]
+struct person_t {
+  coruja::object<string> first_name, surname;
+};
+\end{lstlisting}
+\only<2>{
+\begin{table}[]
+  \footnotesize
+  \begin{tabularx}{\linewidth}{l>{\raggedright}X}
+    \toprule
+    \textbf{Ad hoc}			& \textbf{Coruja}   \tabularnewline 
+    \midrule
+    \texttt{surname(v);}		& \texttt{surname = v;}  \tabularnewline
+    \texttt{auto v = surname();}	& \texttt{auto v = surname.observed();}  \tabularnewline
+    \texttt{change\_surname.connect(f);}& \texttt{surname.after\_change(f);}  \tabularnewline
+    \bottomrule
+  \end{tabularx}
+  \label{tab:options}
+\end{table}
+}
+\end{frame}
+
+\begin{frame}[fragile,t]{Problema \#1 - Solução Coruja}
+\lstset{basicstyle=\footnotesize\sffamily}
+\begingroup
+\setbeamercolor{block title}{bg=hsrmSec2Dark}
+\setbeamercolor{block body}{bg=hsrmSec2}
+\begin{block}{Observable}
+Notifica imediatamente observadores interessados em uma ação específica de alteração de estado de um objeto de tipo T.
+\end{block}
+\endgroup
+\lstset{
+basicstyle=\footnotesize\sffamily,
+numbers=none
+}
+\begin{table}[]
+  \footnotesize
+  \begin{tabularx}{\linewidth}{l>{\raggedright}X}
+    \toprule
+    \textbf{Requisitos}   \tabularnewline 
+    \midrule
+    \begin{lstlisting}^^J
+      Observable::observed\_t^^J
+    \end{lstlisting}
+    \tabularnewline
+    \tabularnewline
+    \begin{lstlisting}^^J
+      observed\_t observed() const noexcept^^J
+    \end{lstlisting}
+    \tabularnewline
+    \tabularnewline
+    \begin{lstlisting}^^J
+      //There has to be at least one observable action^^J
+      //FunctionObject must be CopyConstructible^^J
+      template<typename FunctionObject>^^J
+      connection action(FunctionObject)^^J
+    \end{lstlisting} 
+    \tabularnewline
+    \tabularnewline
+    DefaultConstructible
+    \tabularnewline
+    \bottomrule
+  \end{tabularx}
+  \label{tab:options}
+\end{table}
+\end{frame}
+
+\begin{frame}[fragile,t]{Problema \#1 - Solução Coruja}
+\lstset{basicstyle=\footnotesize\sffamily}
+\begingroup
+\setbeamercolor{block title}{bg=hsrmSec2Dark}
+\setbeamercolor{block body}{bg=hsrmSec2}
+\begin{block}{ObservableObject}
+Refina o conceito \emph{Observable} com uma ação observável geral \texttt{after\_change}
+\end{block}
+\endgroup
+\lstset{
+basicstyle=\footnotesize\sffamily,
+numbers=none
+}
+\begin{table}[]
+  \footnotesize
+  \begin{tabularx}{\linewidth}{l>{\raggedright}X}
+    \toprule
+    \textbf{Requisitos}   \tabularnewline 
+    \midrule
+    \begin{lstlisting}^^J
+      //FunctionObject should be void(const Observable::observed_t\&)^^J
+      template<typename FunctionObject>^^J
+      after_change_connection_t after_change(FunctionObject)^^J
+    \end{lstlisting}
+    \tabularnewline
+    \tabularnewline
+    \begin{lstlisting}^^J
+      Observable::after_change_connection_t^^J
+    \end{lstlisting}
+    \tabularnewline
+    \bottomrule
+  \end{tabularx}
+  \label{tab:options}
+\end{table}
+\end{frame}
+
+\begin{frame}[fragile,t]{Problema \#1 - Solução Coruja}
+\lstset{basicstyle=\tiny\sffamily}
+\begin{lstlisting}[
+    %% emph={array,connection_t,conns,thickness,marker,print_thickness,print_new_thickness},
+    %% emphstyle={\color{hsrmSec3CompDark}},
+    gobble=0,
+    linebackgroundcolor={%
+      \btLstHL<1>{1-2}%
+      \btLstHL<2>{6,25}%
+      \btLstHL<3>{8,21,24}%
+      \btLstHL<4>{11,13}%
+      \btLstHL<5>{15,16,18,19}%
+    }]
+template<class T, class Derived_ = void, template <typename> class Signal = signal>  
+class object /* Models ObservableObject */ {
+    using Derived = typename std::conditional<
+        std::is_same<Derived_, void>::value, object, Derived_>::type;
+
+    using after_change_t=Signal<void(Derived&)>;    
+public:
+    using observed_t = T;
+    using after_change_connection_t = typename after_change_t::connection_t;
+    
+    object() = default;
+    
+    explicit object(observed_t observed) : _observed(move(observed)) {}
+    
+    object(object&&)
+      noexcept(is_nothrow_move_constructible<observed_t>::value) {/*...*/}
+    
+    object& operator=(object&&)
+      noexcept(is_nothrow_move_assignable<observed_t>::value) {/*...*/}
+    
+    const observed_t& observed() const noexcept { return _observed; }
+    /* code */
+private:
+    observed_t _observed;    
+    after_change_t _after_change;
+};        
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile,t]{Problema \#1 - Solução Coruja}
+\lstset{basicstyle=\tiny\sffamily}
+\begin{lstlisting}[
+    %% emph={array,connection_t,conns,thickness,marker,print_thickness,print_new_thickness},
+    %% emphstyle={\color{hsrmSec3CompDark}},
+    gobble=0,
+    linebackgroundcolor={%
+      \btLstHL<1>{7-10}%
+      \btLstHL<2>{12-16}%
+    }]
+template<class T, class Derived_ = void, template <typename> class Signal = signal>  
+class object /* Models ObservableObject */ {
+public:
+
+    /* code */
+
+    template<typename F> //void(Derived&)
+    enable_if_is_invocable_t<after_change_connection_t, F, Derived&>
+    after_change(F&& f)
+    { return _after_change.connect(forward<F>(f)); }
+    
+    template<typename F> //void(const observed_t&)
+    enable_if_is_invocable_t<after_change_connection_t, F, const observed_t&>
+    after_change(F&& f)
+    { return _after_change.connect
+            (detail::lift_to_observable{forward<F>(f)}); }
+};        
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile,t]{Problema \#1 - Solução Coruja}
+\lstset{basicstyle=\scriptsize\sffamily}
+\begin{lstlisting}[
+    %% emph={array,connection_t,conns,thickness,marker,print_thickness,print_new_thickness},
+    %% emphstyle={\color{hsrmSec3CompDark}},
+    gobble=0,
+    linebackgroundcolor={%
+      \btLstHL<1->{3-6}%
+    }]
+template<typename F>    
+struct lift_to_observable_impl {
+    template<typename... ObservableObjects>
+    auto operator()(ObservableObjects&&... objects)
+    CORUJA_DECLTYPE_AUTO_RETURN
+    ( f(objects.observed()...) )
+
+    F f;
+};
+\end{lstlisting}
+\begin{onlyenv}<2->
+\begin{lstlisting}[numbers=none]
+//ObservableObject<T1> vs ObservableObject<T2>
+//T vs ObservableObject<T>
+//ObservableObject<T> vs T    
+operator{==,!=,<,>,<=,>=}
+\end{lstlisting}
+\footnotesize
+\begin{itemize}
+\item O sinal é desconsiderado (sujeito a alterações)
+\end{itemize}
+\end{onlyenv}
+\end{frame}
+
+\begin{frame}[fragile,t]{Problema \#1 - Solução Ad Hoc}
+\lstset{basicstyle=\footnotesize\sffamily}
+\begin{lstlisting}[
+    emph={array,connection_t,conns,thickness,marker,print_thickness,print_new_thickness},
+    % emphstyle={\color{hsrmRedDark}},
+    emphstyle={\color{hsrmSec3CompDark}},
+    gobble=0,
+    linebackgroundcolor={%
+      \btLstHL<1>{1-2}%
+      \btLstHL<2>{5-6}%
+      \btLstHL<3>{4,11}%
+    }]
+auto print_fullname = [&p](string)
+  { cout << p.first_name() + p.surname(); };
+
+array<any_connection, 2> conns {
+   p.change_first_name(print_fullname),
+   p.change_surname(print_fullname),
+};
+
+p.first_name("jimmy");
+
+for(auto& c : conns) c.disconnect();
+\end{lstlisting}
+\end{frame}
+
+%% \begin{frame}[fragile,t]{Problema \#1 - Solução Ad Hoc}
+%% \lstset{basicstyle=\footnotesize\sffamily}
+%% \begin{lstlisting}[
+%%     emph={array,connection_t,conns,thickness,marker,print_thickness,print_new_thickness},
+%%     % emphstyle={\color{hsrmRedDark}},
+%%     emphstyle={\color{hsrmSec3CompDark}},
+%%     gobble=0,
+%%     linebackgroundcolor={%
+%%       \btLstHL<1>{3,4}%
+%%       \btLstHL<2>{10-12}%
+%%       \btLstHL<3>{14,15}%
+%%     }]
+%% template<typename F>
+%% struct fullname_impl {
+%%     void operator()(string s)
+%%     { f(p.first_name() + p.surname()); }
+    
+%%     person_t& p;
+%%     F f;
+%% };
+
+%% template<typename F>
+%% inline fullname_impl<F> fullname(person_t& p, F&& f)
+%% { return fullname_impl<F>{p, forward<F>(f)}; }
+
+%% auto print_fullname =
+%%   fullname(p, [](string s){ cout << s; });
+%% \end{lstlisting}
+%% \end{frame}
+
+\begin{frame}[fragile,t]{Problema \#1 - Solução Coruja}
+\lstset{basicstyle=\footnotesize\sffamily}
+\begin{lstlisting}[
+    emph={array,connection_t,conns,thickness,marker,print_thickness,print_new_thickness},
+    % emphstyle={\color{hsrmRedDark}},
+    emphstyle={\color{hsrmSec3CompDark}},
+    gobble=0,
+    linebackgroundcolor={%
+      \btLstHL<1>{1}%
+      \btLstHL<2>{3}%
+      \btLstHL<3>{5,9}%
+  }]
+auto print = [](string s){cout << s;};  
+
+auto fullname = p.first_name + p.surname;
+
+auto c = fullname.after_change(print);
+
+p.first_name = "jimmy";
+
+c.disconnect();
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile,t]{Problema \#1 - Widget::enable}
+\lstset{basicstyle=\scriptsize\sffamily}
+\begin{lstlisting}[
+    emph={array,connection_t,conns,thickness,marker,print_thickness,print_new_thickness},
+    % emphstyle={\color{hsrmRedDark}},
+    emphstyle={\color{hsrmSec3CompDark}},
+    gobble=0,
+    linebackgroundcolor={%
+  }]
+//AdHoc
+void Widget::enable(bool)
+
+auto conn = name.after_change
+  ([&w](string s){ w.enable(!s.empty()); });
+
+conn.disconnect();
+\end{lstlisting}
+\begin{onlyenv}<2->
+  \begin{itemize}
+  \item<2-> Inversão de controle (IoC).
+    \begin{itemize}
+    \item<2->{Bug se \texttt{\&w} mudar.}
+    \end{itemize}
+  \item<3-> Tenho que gerenciar a conexão.
+  \end{itemize}
+\end{onlyenv}
+\end{frame}
+
+\begin{frame}[fragile,t]{Problema \#1 - Solução Coruja}
+\begingroup
+\setbeamercolor{block title}{bg=hsrmSec2Dark}
+\setbeamercolor{block body}{bg=hsrmSec2}
+\begin{block}{ObservableView}
+  Refina o conceito \emph{Observable}, é \emph{Semiregular} e operações de cópia, move e atribuição são O(1).
+\end{block}
+\endgroup
+\lstset{basicstyle=\scriptsize\sffamily}
+\begin{lstlisting}[
+    emph={array,connection_t,conns,thickness,marker,print_thickness,print_new_thickness},
+    % emphstyle={\color{hsrmRedDark}},
+    emphstyle={\color{hsrmSec3CompDark}},
+    gobble=0,
+    linebackgroundcolor={%
+      \btLstHL<1>{1,2}%
+      \btLstHL<2>{8}%
+      \btLstHL<3>{7}%
+  }]
+//T2 F(T1)
+//O<T2> transform(O<T1>, F)
+
+template<typename ObservableObject, typename F>
+inline enable_if_t<
+    is_observable_object<ObservableObject>::value,
+    detail::transform_object_t<ObservableObject, F>> //O<T2>
+transform(ObservableObject&& o, F&& f)
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile,t]{Problema \#1 - Widget::enable}
+\lstset{basicstyle=\scriptsize\sffamily}
+\begin{lstlisting}[
+    emph={array,connection_t,conns,thickness,marker,print_thickness,print_new_thickness},
+    % emphstyle={\color{hsrmRedDark}},
+    emphstyle={\color{hsrmSec3CompDark}},
+    gobble=0,
+    linebackgroundcolor={%
+      \btLstHL<1>{2,3}%
+      \btLstHL<2>{5}%
+      \btLstHL<3>{5}%
+      \btLstHL<4>{5}%
+  }]
+//ObservableObject::observed_t is bool
+template<typename ObservableObject>  
+void Widget::enable(ObservableObject&&)
+
+w.enable(transform(name, [](string s){return !s.empty();}));
+\end{lstlisting}
+\begin{onlyenv}<3->
+  \begin{itemize}
+  \item<3-> Não há inversão de controle (IoC)
+  \item<4-> Burocracias gerenciadas pelo widget
+    \begin{itemize}
+    \item<4-> Conexão
+    \item<4-> Ponteiro para o widget
+    \end{itemize}
+  \end{itemize}
+\end{onlyenv}
+\end{frame}
+
+\begin{frame}[fragile,t]{Problema \#1 - Solução Coruja}
+\lstset{basicstyle=\tiny\sffamily}
+\begin{lstlisting}[
+    emph={array,connection_t,conns,thickness,marker,print_thickness,print_new_thickness},
+    % emphstyle={\color{hsrmRedDark}},
+    emphstyle={\color{hsrmSec3CompDark}},
+    gobble=0,
+    linebackgroundcolor={%
+      \btLstHL<1>{1,2}%
+      \btLstHL<2>{22,23}%
+      \btLstHL<3>{19-20}%
+      \btLstHL<4>{12-17}%
+  }]
+template<typename From, typename Transform>
+struct transform_object /* Models ObservableView */ {
+    using observed_t = result_of_t<Transform(detail::observed_t<From>)>;;
+    using after_change_connection_t = typename From::after_change_connection_t;
+
+    transform_object() = default;
+    transform_object(From from, Transform transform)
+        : _transform(move(transform))
+        , _from(move(from))
+    {}
+    
+    template<typename F>
+    after_change_connection_t after_change(F&& f) {
+        return _from.after_change
+            (detail::after_change_cbk<From, Transform, F>
+             {_transform, forward<F>(f)});
+    }
+            
+    observed_t observed() const noexcept
+    { return _transform(_from.observed()); }
+private:    
+    ranges::semiregular_t<Transform> _transform;
+    From _from;
+};
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile,t]{Problema \#1 - Solução Coruja}
+\lstset{basicstyle=\scriptsize\sffamily}
+\begin{lstlisting}[
+    emph={array,connection_t,conns,thickness,marker,print_thickness,print_new_thickness},
+    % emphstyle={\color{hsrmRedDark}},
+    emphstyle={\color{hsrmSec3CompDark}},
+    gobble=0,
+    linebackgroundcolor={%
+      \btLstHL<1>{10,11}%
+  }]
+namespace coruja { namespace detail {
+
+template<typename From, typename Transform, typename F>    
+struct after_change_cbk : protected Transform {
+    after_change_cbk(Transform t, F f)
+        : Transform(move(t))
+        , _f(move(f))
+    {}
+    
+    void operator()(const typename From::observed_t& from)
+    { _f(Transform::operator()(from)); }
+
+    F _f;
+};
+        
+}}
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile,t]{Problema \#1 - Solução Coruja}
+\lstset{basicstyle=\scriptsize\sffamily}
+\begin{lstlisting}[
+    emph={array,connection_t,conns,thickness,marker,print_thickness,print_new_thickness},
+    % emphstyle={\color{hsrmRedDark}},
+    emphstyle={\color{hsrmSec3CompDark}},
+    gobble=0,
+    linebackgroundcolor={%
+      \btLstHL<1>{1-2}%
+      \btLstHL<2>{4-6}%
+  }]
+template<typename Transform, typename... Objects>
+auto lift(Transform&&, Objects&...)
+    
+template<typename O1, typename O2>
+auto operator+(O1& o1, O2& o2)
+{ return lift(Plus{}, o1, o2); }
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile,t]{Problema \#1 - Solução Coruja}
+\lstset{basicstyle=\tiny\sffamily}
+\begin{lstlisting}[
+    linebackgroundcolor={%
+      \btLstHL<1>{3}%
+      \btLstHL<2>{6-7}%
+      \btLstHL<3>{13}%
+      \btLstHL<4>{15-16}%
+      \btLstHL<5>{18}%
+  }]
+template<typename T, typename Transform, typename... Objects>
+class lift_object : view_base {
+  using From = boost::fusion::vector<Objects...>;
+public:
+  using observed_t = T;
+  using after_change_connection_t = connections<
+    typename remove_reference_t<Objects>::after_change_connection_t...>;
+  
+  template<typename F>
+  after_change_connection_t after_change(F&& f) {
+    using namespace boost::fusion;
+    using conns_t = typename after_change_connection_t::type;
+    using Obj2Conn = vector<From&, conns_t&>;
+
+    conns_t conns;
+    auto obj2conn = zip_view<Obj2Conn>(Obj2Conn(_objects, conns));
+    
+    for_each(obj2conn, detail::connect_object
+             <From, Transform, remove_reference_t<F>, after_change_connection_t>
+             {_objects, _transform, f});
+    
+    return {std::move(conns)};
+  }
+
+  /* ... */
+private:
+  mutable ranges::semiregular_t<Transform> _transform;
+  From _objects;
+};
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile,t]{Problema \#1 - Solução Coruja}
+\lstset{basicstyle=\tiny\sffamily}
+\begin{lstlisting}[
+    linebackgroundcolor={%
+      \btLstHL<1>{16-17}%
+      \btLstHL<2>{23-25}%
+      \btLstHL<3>{1-9}%
+  }]
+template<typename Objects, typename Transform, typename F, typename Observed>
+struct lift_f : private Transform {
+    /* ... */
+    void operator()(const Observed&)
+    { _f(boost::fusion::invoke(static_cast<Transform&>(*this), _objects)); }
+    
+    Objects _objects;
+    F _f;
+};
+        
+template<typename From, typename Transform, typename F, typename Conn>
+struct connect_object {
+    template<typename Obj2Conn>
+    void operator()(Obj2Conn&& obj2conn) const {
+        using namespace boost::fusion;
+        auto& object = at_c<0>(obj2conn);
+        auto& conn = at_c<1>(obj2conn);
+
+        using Obj = typename std::remove_reference<
+            typename result_of::at_c<Obj2Conn, 0>::type>::type;
+        
+        //TODO: Update from
+        conn = object.after_change
+            (lift_f<From, Transform, F, typename Obj::observed_t>
+             (_transform, _from, _f));
+    }
+    
+    From& _from;
+    Transform& _transform;
+    F& _f;
+};
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile,t]{Performance AdHoc x Lift - assignment}
+\lstset{basicstyle=\scriptsize\sffamily}
+\begin{lstlisting}[
+    emph={array,connection_t,conns,thickness,marker,print_thickness,print_new_thickness},
+    % emphstyle={\color{hsrmRedDark}},
+    emphstyle={\color{hsrmSec3CompDark}},
+    gobble=0,
+    linebackgroundcolor={%
+      \btLstHL<1>{7,12}%
+  }]
+object<string> s1, s2;
+
+//AdHoc
+auto l = [&r,&o1,&o2](string){r = o1.observed() + o2.observed();};
+o1.after_change(l);
+o2.after_change(l);
+o1 = "abc";
+
+//Lift
+auto s1s2 = s1 + s2;
+s1s2.after_change([&r](string s){ r = s; });
+o1 = "abc";
+\end{lstlisting}
+\begin{table}[]
+  \footnotesize
+  \begin{tabularx}{\linewidth}{X X X X}
+    \toprule
+    \textbf{Método} & \textbf{Média} & \textbf{Mediana} & \textbf{Desvio padrão} \tabularnewline 
+    \midrule
+    \texttt{lift} & \texttt{33ns} & \texttt{33ns} & \texttt{0ns} \tabularnewline
+    \texttt{adHoc} & \texttt{33ns} & \texttt{33ns} & \texttt{1ns} \tabularnewline
+    \bottomrule
+  \end{tabularx}
+  \label{tab:options}
+\tiny AMD Ryzen 7 1700X with GCC 8.2.0 -O3 and 10x repetitions
+\end{table}
+\end{frame}
+
+\begin{frame}[fragile,t]{Performance AdHoc x Lift - after\_change()}
+\lstset{basicstyle=\scriptsize\sffamily}
+\begin{lstlisting}[
+    emph={array,connection_t,conns,thickness,marker,print_thickness,print_new_thickness},
+    % emphstyle={\color{hsrmRedDark}},
+    emphstyle={\color{hsrmSec3CompDark}},
+    gobble=0,
+    linebackgroundcolor={%
+      \btLstHL<1>{3-5,10,11}%
+  }]
+//AdHoc
+for(size_t i(0);i<state.range(0);++i) {
+  auto c1 = o1.after_change(l);
+  auto c2 = o2.after_change(l);
+  conns.push_back({move(c1), move(c2)});
+}
+
+//Lift
+for(size_t i(0);i<state.range(0);++i) {
+  auto c = concat.after_change([&r](string s){r = s;});
+  conns.push_back(move(c));
+}
+\end{lstlisting}
+\newcolumntype{R}[1]{>{\raggedleft\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
+\begin{table}[]
+  \footnotesize
+  \begin{tabularx}{\linewidth}{R{1.0cm} R{2.0cm} R{1.5cm} R{1.2cm} R{1.0cm} R{1.0cm}}
+    \toprule
+    \textbf{n} & \textbf{Lift($\mu$s)}  & \textbf{AdHoc($\mu$s)} & \textbf{Diff} & \textbf{sd($\mu$s)} & \textbf{sd($\mu$s)} \tabularnewline 
+    \midrule
+    \texttt{1} & \texttt{0,101} & \texttt{0,102} & \texttt{+0,01} & \texttt{0} & \texttt{0} \tabularnewline
+    \texttt{10} & \texttt{1,032} & \texttt{1,033} & \texttt{+0,01} & \texttt{0,001} & \texttt{0,026} \tabularnewline
+    \texttt{100} & \texttt{14,167} & \texttt{14,925} & \texttt{+0,05} & \texttt{0,006} & \texttt{0,101} \tabularnewline
+    \bottomrule
+  \end{tabularx}
+  \label{tab:options}
+\tiny AMD Ryzen 7 1700X with GCC 8.2.0 -O3 and 5x repetitions
+\end{table}
+\end{frame}
+
+\section{Ranges observáveis}
+
+\begin{frame}[fragile,t]{Problema \#2 - Visão em árvore}
+\lstset{basicstyle=\footnotesize\sffamily}
+\begin{lstlisting}[
+    emph={marker,well,markers_t,flat_set,string},
+    % emphstyle={\color{hsrmRedDark}},
+    emphstyle={\color{hsrmSec3CompDark}},
+    gobble=0,
+    linebackgroundcolor={%
+      \btLstHL<1>{1-3}%
+      \btLstHL<2>{5-8}%
+      \btLstHL<3>{10}%
+    }]
+struct city {
+    string name;
+};
+
+struct country {
+    string name;
+    vector<city> cities;
+};
+
+vector<country> countries;
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}{Problema \#2 - Visão em árvore}
+\begin{tikzpicture}[scale=0.6]
+  \tikzset{every child/.append style={scale=1}}
+  \path[mindmap,concept color=hsrmSec3CompDark,text=white]
+  node[concept,scale=0.4] {Countries}
+  [clockwise from=30]
+  child[concept color=hsrmSec2Dark,text=white] { 
+    node[concept, scale=0.5] {Country 1} 
+    child { node[concept,color=hsrmSec1CompDark,text=white,scale=0.5] {City 1} } 
+    child { node[concept,color=hsrmSec1CompDark,text=white,scale=0.5] {City 2} } 
+    child { node[concept,color=hsrmSec1CompDark,text=white,scale=0.5] {City 3} } 
+  }
+  child[concept color=hsrmSec2Dark,text=white] { 
+    node[concept, scale=0.5] {Country 2} 
+    child { node[concept,color=hsrmSec1CompDark,text=white,,scale=0.5] {City A} } 
+    child { node[concept,color=hsrmSec1CompDark,text=white,scale=0.5] {City B} } 
+  };
+\end{tikzpicture}
+\begin{itemize}
+\item Visão atualizada imediatamente quando o modelo é alterado
+  \begin{itemize}
+  \item Inserção/Remoção de nó
+  \item Alteração do nome
+  \end{itemize}
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile,t]{Problema \#2 - Solução Ad Hoc - Country}
+\lstset{basicstyle=\scriptsize\sffamily}
+\begin{lstlisting}[
+    gobble=0,
+    linebackgroundcolor={%
+      \btLstHL<1>{15-16}%
+      \btLstHL<2>{4-7,9,11-13}%
+    }]
+struct country {
+  using cities_t = vector<city>;
+
+  void push_back_city(const city& c) {
+      _cities.push_back(c);
+      _city_insert(_cities, prev(_cities.end()));
+  }
+
+  const cities_t& cities() const noexcept{ return _cities; };
+
+  template<typename F>
+  any_connection on_city_insert(F&& f)
+  { return _city_insert.connect(forward<F>(f)); }
+private:
+  signal<void(const cities_t&, cities_t::iterator)>
+    _city_insert;
+  cities_t _cities;
+};
+\end{lstlisting}
+\footnotesize
+\only<2>{
+\texttt{push\_back(city\&\&)}, \texttt{insert}, \texttt{emplace}, \texttt{emplace\_back} e \texttt{std::sort()}?
+}
+\end{frame}
+
+\begin{frame}[fragile,t]{Problema \#2 - Solução Ad Hoc - Country}
+\lstset{basicstyle=\tiny\sffamily}
+\begin{lstlisting}[
+    gobble=0,
+    linebackgroundcolor={%
+      \btLstHL<1->{10-13,21-23,25}%
+    }]
+struct country {
+  string name;
+  using cities_t = vector<city>;
+  
+  void push_back_city(const city& c) {
+      _cities.push_back(c);
+      _city_insert(_cities, prev(_cities.end()));
+  }
+
+  cities_t::iterator erase(cities_t::iterator it) {
+      _city_erase(_cities, it);
+      return _cities.erase(it);
+  }
+  
+  const cities_t& cities() const noexcept { return _cities; };
+
+  template<typename F>
+  any_connection on_city_insert(F&& f)
+  { return _city_insert.connect(forward<F>(f)); }
+
+  template<typename F>
+  any_connection on_city_erase(F&& f)
+  { return _city_erase.connect(forward<F>(f)); }
+private:
+  signal<void(cities_t&,cities_t::iterator)> _city_insert, _city_erase;
+  cities_t _cities;
+};
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile,t]{Problema \#2 - Solução Ad Hoc - Countries}
+\lstset{basicstyle=\tiny\sffamily}
+\begin{lstlisting}
+struct countries {
+  using model_t = vector<country>;
+  
+  void push_back_country(const country& c) {
+      _model.push_back(c);
+      _country_insert(_model, prev(_model.end()));
+  }
+
+  model_t::iterator erase(model_t::iterator it) {
+      _country_erase(_model, it);
+      return _model.erase(it);
+  }
+  
+  const model_t& countries() const noexcept { return _model; };
+
+  template<typename F>
+  any_connection on_country_insert(F&& f)
+  { return _country_insert.connect(forward<F>(f)); }
+
+  template<typename F>
+  any_connection on_country_erase(F&& f)
+  { return _country_erase.connect(forward<F>(f)); }
+private:
+  signal<void(model_t&, model_t::iterator)>
+    _country_insert, _country_erase;
+  model_t _model;
+};
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile,t]{Problema \#2 - Solução Ad Hoc - Observação}
+\lstset{basicstyle=\scriptsize\sffamily}
+\begin{lstlisting}[
+    emph={basin,it,wells,well,markers,marker},
+    % emphstyle={\color{hsrmRedDark}},
+    emphstyle={\color{hsrmSec3CompDark}},
+    gobble=0,
+    linebackgroundcolor={%
+      \btLstHL<1>{3-4}%
+      \btLstHL<2>{5}%
+      \btLstHL<3>{6}%
+      \btLstHL<4>{8-9}%
+      \btLstHL<5>{10-11}%
+      \btLstHL<6>{14}%
+  }]
+std::vector<any_connection> conns;  
+conns.push_back(
+countries.on_country_insert(
+  [&conns,st](auto& countries, auto it) {
+    auto pos = distance(countries.begin(),it);
+    auto gtk_it = insert_row(st, it->name, to_string(pos));
+    conns.push_back(
+      it->on_city_insert.connect(
+      [gtk_it,st](auto& cities, auto it) {
+        auto pos = distance(cities.begin(),it);
+        insert_row_child(st, it->name, gtk_it, pos);
+      }));
+  }));
+for(auto& c : conns) c.disconnect();  
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile,t]{Problema \#2 - Solução Ad Hoc - Observação}
+\lstset{basicstyle=\scriptsize\sffamily}
+\begin{lstlisting}[
+    emph={basin,it,wells,well,markers,marker},
+    % emphstyle={\color{hsrmRedDark}},
+    emphstyle={\color{hsrmSec3CompDark}},
+    gobble=0,
+    linebackgroundcolor={%
+      \btLstHL<1>{7-9,15-17}%
+    }]
+std::vector<any_connection> conns;  
+conns.push_back(
+countries.on_country_insert(
+  [&conns,st](auto& countries, auto it) {
+    auto pos = distance(countries.begin(),it);
+    auto gtk_it = insert_row(st, it->name, to_string(pos));
+    conns.push_back(
+    it->after_change(
+      [gtk_it,st](string s){update_row(st, s, gtk_it);}));
+    conns.push_back(
+      it->on_city_insert.connect(
+      [gtk_it,st, &conns](auto& cities, auto it) {
+        auto pos = distance(cities.begin(),it);
+        auto gtk_it = insert_row_child(st, it->name, gtk_it, pos);
+        conns.push_back(
+        it->after_change(
+          [gtk_it,st](string s){update_row(st, s, gtk_it);}));
+        }));
+  }));
+for(auto& c : conns) c.disconnect();  
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile,t]{Problema \#2 - Solução Ad Hoc - Observação}
+\lstset{basicstyle=\tiny\sffamily}
+\begin{lstlisting}[
+    emph={basin,it,wells,well,markers,marker},
+    % emphstyle={\color{hsrmRedDark}},
+    emphstyle={\color{hsrmSec3CompDark}},
+    gobble=0,
+    linebackgroundcolor={%
+      \btLstHL<1>{19-24}%
+    }]
+std::vector<any_connection> conns;  
+conns.push_back(
+countries.on_country_insert(
+  [&conns,st](auto& countries, auto it) {
+    auto pos = distance(countries.begin(),it);
+    auto gtk_it = insert_row(st, it->name, to_string(pos));
+    conns.push_back(
+      it->after_change(
+      [gtk_it,st](string s){update_row(st, s, gtk_it);}));
+    conns.push_back(
+      it->on_city_insert.connect(
+      [gtk_it,st,&conns](auto& cities, auto it) {
+        auto pos = distance(cities.begin(),it);
+        auto gtk_it = insert_row_child(st, it->name, gtk_it, pos);
+        conns.push_back(
+          it->after_change(
+          [gtk_it,st](string s){update_row(st, s, gtk_it);}));
+      }));
+    conns.push_back(
+      it->on_city_erase.connect(
+        [&conns,st](auto& cities, auto it) {
+          auto pos = distance(cities.begin(),it);
+          remove_row(st,to_string(pos));
+        }));
+  }));
+
+for(auto& c : conns) c.disconnect();  
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile,t]{Problema \#2 - Solução Ad Hoc - Observação}
+\lstset{basicstyle=\scriptsize\sffamily}
+\begin{lstlisting}[
+    emph={basin,it,wells,well,markers,marker},
+    % emphstyle={\color{hsrmRedDark}},
+    emphstyle={\color{hsrmSec3CompDark}},
+    gobble=0,
+    linebackgroundcolor={%
+    }]
+conns.push_back(
+countries.on_country_erase(
+  [&conns,st](auto& countries, auto it) {
+    auto pos = distance(countries.begin(),it);
+    remove_row(st,to_string(pos));
+  }));
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile,t]{Problema \#2 - Solução Coruja}
+\lstset{basicstyle=\footnotesize\sffamily}
+\begin{lstlisting}[
+    gobble=0,
+    linebackgroundcolor={%
+      \btLstHL<1>{7,10}%
+    }]
+struct city {
+    string name;
+};
+
+struct country {
+    string name;
+    coruja::vector<city> cities;
+};
+
+coruja::vector<country> countries;
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile,t]{Ranges}
+\begingroup
+\setbeamercolor{block title}{bg=hsrmSec2Dark}
+\setbeamercolor{block body}{bg=hsrmSec2}
+\begin{block}{Range}
+Representa uma sequência de elementos através de [begin(), end())
+\end{block}
+\endgroup
+\lstset{
+basicstyle=\footnotesize\sffamily,
+numbers=none
+}
+\begin{onlyenv}<1>
+\begin{lstlisting}
+countries | transform([](auto& c){return c.name;});
+//{"Country", "Country2"}
+\end{lstlisting}
+\end{onlyenv}
+\end{frame}
+
+\begin{frame}[fragile,t]{Problema \#2 - Solução Coruja}
+\lstset{basicstyle=\footnotesize\sffamily}
+\begingroup
+\setbeamercolor{block title}{bg=hsrmSec2Dark}
+\setbeamercolor{block body}{bg=hsrmSec2}
+\begin{block}{ObservableErasableRange}
+\emph{Observable} e \emph{Range} permitindo a observação na inserção e remoção de elementos.
+\end{block}
+\endgroup
+\lstset{
+basicstyle=\scriptsize\sffamily,
+numbers=none
+}
+\begin{table}[]
+  \scriptsize
+  \begin{tabularx}{\linewidth}{l>{\raggedright}X}
+    \toprule
+    \textbf{Requisitos}   \tabularnewline 
+    \midrule
+    \begin{lstlisting}^^J
+      //FunctionObject: void(Rng\&, Rng::iterator)^^J
+      //          void(reference_t<Rng>)^^J
+      template<typename FunctionObject>^^J
+      for_each_connection_t for_each(FunctionObject)^^J
+    \end{lstlisting}
+    \tabularnewline
+    \tabularnewline
+    \begin{lstlisting}^^J
+      //FunctionObject: void(Rng\&, Rng::iterator)^^J
+      //          void(reference_t<Rng>)^^J
+      template<typename FunctionObject>^^J
+      before_erase_connection_t before_erase(FunctionObject)^^J
+    \end{lstlisting}
+    \tabularnewline
+    \tabularnewline
+    \begin{lstlisting}^^J
+      Observable::for_each_connection_t^^J
+      Observable::before_erase_connection_t^^J
+    \end{lstlisting}
+    \tabularnewline
+    \bottomrule
+  \end{tabularx}
+  \label{tab:options}
+\end{table}
+\end{frame}
+
+\begin{frame}[fragile,t]{Problema \#2 - Solução Coruja}
+\lstset{basicstyle=\scriptsize\sffamily}
+\begin{lstlisting}[
+    emph={basin,it,wells,well,markers,marker},
+    % emphstyle={\color{hsrmRedDark}},
+    emphstyle={\color{hsrmSec3CompDark}},
+    gobble=0,
+    linebackgroundcolor={%
+      \btLstHL<1>{1,2}%
+      \btLstHL<2>{4}%
+    }]
+template<typename ObservableErasableRange, typename F>
+auto transform(ObservableErasableRange&&, F&&)
+
+transform(countries, [](country& c){return c.name;});
+//{"Country", "Country2"}
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile,t]{Problema \#2 - Solução Coruja}
+\lstset{basicstyle=\footnotesize\sffamily}
+\begin{lstlisting}[
+    emph={basin,it,wells,well,markers,marker},
+    % emphstyle={\color{hsrmRedDark}},
+    emphstyle={\color{hsrmSec3CompDark}},
+    gobble=0,
+    linebackgroundcolor={%
+      \btLstHL<1>{1-9}%
+      \btLstHL<2>{11-12}%
+      \btLstHL<3>{14-17}%
+  }]
+//Rows is an ObservableErasableRange
+//Rows::value_type should be Row:
+//Row : string
+//    | pair<string, Rows>
+template<typename Rows>
+struct tree_t {
+    explicit tree_t(Rows) {/*impl*/}
+    Rows rows;
+};
+
+//{("Country1", {"City1","City2","City3"}),
+// ("Country2", {"CityA","CityB"})}
+
+coruja::vector<string> v{"abc", "def"};
+auto tree = make_tree(v);
+v.emplace_back("ghi"); //update tree
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile,t]{Problema \#2 - Solução Coruja}
+\lstset{basicstyle=\footnotesize\sffamily}
+\begin{lstlisting}[
+    emph={basin,it,wells,well,markers,marker},
+    % emphstyle={\color{hsrmRedDark}},
+    emphstyle={\color{hsrmSec3CompDark}},
+    gobble=0,
+    linebackgroundcolor={%
+      \btLstHL<1>{11}%
+      \btLstHL<2>{14}%
+  }]
+//Rows is an ObservableErasableRange
+//Rows::value_type should be Row:
+//Row : string
+//    | pair<string, Rows>
+template<typename Rows>
+struct tree_t {
+    explicit tree_t(Rows) {/*impl*/}
+    Rows rows;
+};
+
+coruja::vector<coruja::object<string>> v;
+auto tree = make_tree(v);
+v.emplace_back("ghi"); //update tree
+v.back() = "change"; //update tree
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile,t]{Problema \#2 - Solução Coruja}
+\lstset{basicstyle=\footnotesize\sffamily}
+\begin{lstlisting}[
+    emph={basin,it,wells,well,markers,marker},
+    % emphstyle={\color{hsrmRedDark}},
+    emphstyle={\color{hsrmSec3CompDark}},
+    gobble=0,
+    linebackgroundcolor={%
+      \btLstHL<1>{8,9}%
+      \btLstHL<2>{10-11}%
+  }]
+struct city { string name; };
+struct country {
+    string name;
+    coruja::vector<city> cities;
+};
+coruja::vector<country> countries;
+
+auto rows = transform(countries, 
+  [](country& c){
+    return row(c.name, transform(c.cities,
+               [](city& c){return c.name;})); });
+  
+auto tree = make_tree(rows);
+//{("Country1", {"City1","City2","City3"}),
+// ("Country2", {"CityA","CityB"})}
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile,t]{Problema \#2 - Solução Coruja}
+\lstset{basicstyle=\tiny\sffamily}
+\begin{lstlisting}[
+    emph={basin,it,wells,well,markers,marker},
+    % emphstyle={\color{hsrmRedDark}},
+    emphstyle={\color{hsrmSec3CompDark}},
+    gobble=0,
+    linebackgroundcolor={%
+      \btLstHL<1>{6-7}%
+      \btLstHL<2>{9-10}%
+  }]
+template<typename F>
+class invoke_observer_impl : private invoke_observer_base<F> {
+  using base = invoke_observer_base<F>;
+  using base::base;
+  
+  template<typename From, typename It>
+  void operator()(From& from, It it) {
+    using namespace ranges;
+    auto rng = coruja_transform_view{from, base::as_transform()};
+    base::_f(rng, next(begin(rng), distance(begin(from), it)));
+  }
+};
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile,t]{push\_back() - AdHoc x Transform}
+  \newcolumntype{R}[1]{>{\raggedleft\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
+  \begin{table}[]
+  \scriptsize
+  \begin{tabularx}{\linewidth}{R{1.7cm} R{2.0cm} R{1.5cm} R{1.2cm} R{1.0cm} R{1.0cm}}
+    \toprule
+    \textbf{push\_back()} & \textbf{Transform($\mu$s)}  & \textbf{AdHoc($\mu$s)} & \textbf{Diff($\mu$s)} & \textbf{sd($\mu$s)} & \textbf{sd($\mu$s)} \tabularnewline 
+    \midrule
+    \texttt{50} & \texttt{83} & \texttt{83} & \texttt{0} & \texttt{4} & \texttt{4} \tabularnewline
+    \texttt{200} & \texttt{435} & \texttt{423} & \texttt{-12} & \texttt{20} & \texttt{20} \tabularnewline
+    \texttt{500} & \texttt{2000} & \texttt{2019} & \texttt{+19} & \texttt{24} & \texttt{32} \tabularnewline
+    \texttt{1000} & \texttt{7398} & \texttt{7476} & \texttt{+78} & \texttt{203} & \texttt{249} \tabularnewline
+    \texttt{1500} & \texttt{16206} & \texttt{16301} & \texttt{+95} & \texttt{352} & \texttt{389} \tabularnewline
+    \texttt{2000} & \texttt{28043} & \texttt{28310} & \texttt{+267} & \texttt{326} & \texttt{441} \tabularnewline
+    \texttt{5000} & \texttt{188646} & \texttt{191184} & \texttt{+2538} & \texttt{2408} & \texttt{578} \tabularnewline
+    \texttt{10000} & \texttt{841242} & \texttt{854977} & \texttt{+13735} & \texttt{10371} & \texttt{9148} \tabularnewline
+    \bottomrule
+  \end{tabularx}
+  \label{tab:options}
+\tiny AMD Ryzen 7 1700X with GCC 4.8.2 -O3, GTK 2.24/GtkTreeStore and 10-250x repetitions
+\end{table}
+\end{frame}
+
+\begin{frame}[fragile,t]{push\_back() - std::vector x Coruja x Boost.Signals2}
+\lstset{basicstyle=\footnotesize\sffamily}
+\begin{lstlisting}[
+    emph={basin,it,wells,well,markers,marker},
+    % emphstyle={\color{hsrmRedDark}},
+    emphstyle={\color{hsrmSec3CompDark}},
+    gobble=0,
+    linebackgroundcolor={%
+  }]
+//wosignals  
+using vec_t = std::vector<size_t>;
+
+//csignals(Coruja signal)
+using vec_t = vector<size_t>;
+
+//bsignals(Boost.Signals2)
+using vec_t = vector<size_t, allocator<size_t>,
+                     std::vector,void,boost_signals2>;
+
+\end{lstlisting}
+
+  \newcolumntype{R}[1]{>{\raggedleft\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
+  \begin{table}[]
+  \scriptsize
+  \begin{tabularx}{\linewidth}{R{0.8cm} R{1.2cm} R{1.3cm} R{1.4cm} R{0.9cm} R{0.8cm} R{0.8cm} R{1.1cm}}
+    \toprule
+    \textbf{n} & \textbf{vector(ns)}  & \textbf{coruja(ns)} & \textbf{boost(ns)} & \textbf{diff} & \textbf{sd(ns)} & \textbf{sd(ns)} & \textbf{sd(ns)} \tabularnewline 
+    \midrule
+    \texttt{5} & \texttt{26,84} & \texttt{28,76} & \texttt{223,96} & \texttt{+6,79} & \texttt{0,10} & \texttt{0,32} & \texttt{14,36} \tabularnewline
+    \texttt{1000} & \texttt{2083,38} & \texttt{2160,98} & \texttt{38497,10} & \texttt{+16,81} & \texttt{1,38} & \texttt{0,37} & \texttt{48,37} \tabularnewline
+    \texttt{10000} & \texttt{20594,15} & \texttt{21388,84} & \texttt{388575,65} & \texttt{+17,17} & \texttt{0,78} & \texttt{6,27} & \texttt{3929,02} \tabularnewline
+    \bottomrule
+  \end{tabularx}
+  \label{tab:options}
+\tiny AMD Ryzen 7 1700X with GCC 8.2.0 -O3, Boost 1.67.0 and 5 repetitions
+\end{table}
+\end{frame}
+
+\begin{frame}[fragile,t]{signal - Coruja x Boost.Signals2 - compile time}
+\lstset{basicstyle=\scriptsize\sffamily}
+\begin{lstlisting}[
+    emph={basin,it,wells,well,markers,marker},
+    % emphstyle={\color{hsrmRedDark}},
+    emphstyle={\color{hsrmSec3CompDark}},
+    gobble=0,
+    linebackgroundcolor={%
+  }]
+//Coruja signal
+#include <coruja/support/signal.hpp>
+coruja::signal<void(int)> sig;
+
+//Boost.Signals2
+#include <boost/signals2/signal.hpp>
+boost::signals2::signal<void(int)> sig;
+\end{lstlisting}
+
+  \newcolumntype{R}[1]{>{\raggedleft\let\newline\\\arraybackslash\hspace{0pt}}m{#1}}
+  \begin{table}[]
+  \scriptsize
+  \begin{tabularx}{\linewidth}{R{1.5cm} R{3.0cm} R{1.2cm} R{1.2cm} R{1.2cm}}
+    \toprule
+    \textbf{Coruja(s)} & \textbf{Boost.Signals2(s)} & \textbf{Diff} & \textbf{sd(s)} & \textbf{sd(s)} \tabularnewline 
+    \midrule
+    \texttt{0.286} & \texttt{1.298} & \texttt{+3.54} & \texttt{0.005} & \texttt{0.004} \tabularnewline
+    \bottomrule
+  \end{tabularx}
+  \label{tab:options}
+\tiny AMD Ryzen 7 1700X with GCC 8.2.0 -O3, Boost 1.67.0 and 5 repetitions
+\end{table}
+\end{frame}
+
+\begin{frame}[fragile,t]{Outros modelos}
+  \begin{itemize}
+    \item coruja::map, coruja::unordered\_map e coruja::flat\_map
+    \item coruja::set e coruja::flat\_set
+    \item coruja::optional
+    \item coruja::variant
+    \item coruja::object\_view e coruja::container\_view
+    \item coruja::any\_object\_view
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile,t]{Suporte Boost.Serialization}
+\lstset{basicstyle=\footnotesize\sffamily}
+\begin{lstlisting}[
+    emph={basin,it,wells,well,markers,marker},
+    % emphstyle={\color{hsrmRedDark}},
+    emphstyle={\color{hsrmSec3CompDark}},
+    gobble=0,
+    linebackgroundcolor={%
+      \btLstHL<1>{4}%
+  }]
+template<typename Archive>
+void serialize(Archive& ar, country& o, unsigned int) {
+  ar & o.name;
+  ar & o.cities; //coruja::vector<city>
+}
+\end{lstlisting}
+\begin{itemize}
+\item Operação de \texttt{load} notifica observadores
+\end{itemize}
+\end{frame}
+
+\begin{frame}[fragile,t]{Trabalhos relacionados}
+  \begin{itemize}
+    \item RxCpp
+      \begin{itemize}
+        \item Abstrações baseadas em FRP (streams e operations)
+        \item Notificações assíncronas
+        \item `rx::iterate` (Observables a partir de ranges)
+          \begin{itemize}
+            \item Considera o range como imutável.
+          \end{itemize}
+      \end{itemize}
+    \item Sodium e sfrp
+      \begin{itemize}
+        \item Implementações puras de FRP (stream, cell e operations)
+      \end{itemize}
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile,t]{Continuação}
+  \begin{itemize}
+    \item Revisitar classes reativas: \texttt{coruja::reactive\_class}
+    \item Lançar versão 0.1
+    \item Revisitar suporte a FRP (streams e operations)
+    \item Melhorar o uso de concepts em compile time
+    \item Explorar widgets com suporte a Observables
+  \end{itemize}
+\end{frame}
+
+\begin{frame}[fragile,t]{Obrigado}
+  \href{https://github.com/ricardocosme/coruja}{github.com/ricardocosme/coruja}
+  \begin{itemize}
+    \item Benchmarks: \texttt{test/bench*.cpp}
+  \end{itemize}
+\end{frame}
+\end{document}
