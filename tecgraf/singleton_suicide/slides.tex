@@ -28,28 +28,28 @@
 \usepackage{listings}
 \usepackage{dirtree}
 
-%% \usepackage{lstlinebgrd}
+\usepackage{lstlinebgrd}
 
 %% hack from https://tex.stackexchange.com/questions/451532/recent-issues-with-lstlinebgrd-package-with-listings-after-the-latters-updates
-\makeatletter
-\let\old@lstKV@SwitchCases\lstKV@SwitchCases
-\def\lstKV@SwitchCases#1#2#3{}
-\makeatother
-\usepackage{lstlinebgrd}
-\makeatletter
-\let\lstKV@SwitchCases\old@lstKV@SwitchCases
+% \makeatletter
+% \let\old@lstKV@SwitchCases\lstKV@SwitchCases
+% \def\lstKV@SwitchCases#1#2#3{}
+% \makeatother
+% \usepackage{lstlinebgrd}
+% \makeatletter
+% \let\lstKV@SwitchCases\old@lstKV@SwitchCases
 
-\lst@Key{numbers}{none}{%
-    \def\lst@PlaceNumber{\lst@linebgrd}%
-    \lstKV@SwitchCases{#1}%
-    {none:\\%
-     left:\def\lst@PlaceNumber{\llap{\normalfont
-                \lst@numberstyle{\thelstnumber}\kern\lst@numbersep}\lst@linebgrd}\\%
-     right:\def\lst@PlaceNumber{\rlap{\normalfont
-                \kern\linewidth \kern\lst@numbersep
-                \lst@numberstyle{\thelstnumber}}\lst@linebgrd}%
-    }{\PackageError{Listings}{Numbers #1 unknown}\@ehc}}
-\makeatother
+% \lst@Key{numbers}{none}{%
+%     \def\lst@PlaceNumber{\lst@linebgrd}%
+%     \lstKV@SwitchCases{#1}%
+%     {none:\\%
+%      left:\def\lst@PlaceNumber{\llap{\normalfont
+%                 \lst@numberstyle{\thelstnumber}\kern\lst@numbersep}\lst@linebgrd}\\%
+%      right:\def\lst@PlaceNumber{\rlap{\normalfont
+%                 \kern\linewidth \kern\lst@numbersep
+%                 \lst@numberstyle{\thelstnumber}}\lst@linebgrd}%
+%     }{\PackageError{Listings}{Numbers #1 unknown}\@ehc}}
+% \makeatother
 
 \usepackage{hyperref}
 \usepackage{fontspec}
@@ -359,25 +359,6 @@ void MainPresenter::openToolX() {
     gobble=0,
     linebackgroundcolor={%
       \btLstHL<1>{2}%
-      \btLstHL<2>{4-6}%
-      \btLstHL<3>{7}%
-  }]
-class ToolXPresenter {
-  function<void()> _onClose;
-public:    
-  template<typename FunctionObject>
-  void onClose(FunctionObject cbk)
-  { _onClose = std::move(cbk); }
-  void close(){ _onClose(); }
-};
-\end{lstlisting}
-\end{frame}
-
-\begin{frame}[fragile,t]{Solução AdHoc}
-\begin{lstlisting}[
-    gobble=0,
-    linebackgroundcolor={%
-      \btLstHL<1>{2}%
       \btLstHL<2>{6-7}%
       \btLstHL<3>{8-9}%
       \btLstHL<4>{10}%
@@ -437,6 +418,21 @@ struct MainPresenter {
 
 void MainPresenter::openToolX()
 { toolx.instance(view).show(); }
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile,t]{Single - Por valor - Uso}
+\begin{lstlisting}[
+    gobble=0,
+    linebackgroundcolor={%
+      \btLstHL<1>{6}%
+  }]
+struct MainPresenter {
+  presenter<ToolXPresenter> toolx;
+};
+
+void MainPresenter::openToolX()
+{ SACI_SINGLE_OF(toolx, view).show(); }
 \end{lstlisting}
 \end{frame}
 
