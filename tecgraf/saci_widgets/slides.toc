@@ -1,0 +1,6 @@
+\select@language {portuguese}
+\beamer@sectionintoc {1}{Padrão Singleton}{2}{0}{1}
+\beamer@sectionintoc {2}{Janelas filha (Single)}{16}{0}{2}
+\beamer@sectionintoc {3}{Janelas filhas (Coleção)}{30}{0}{3}
+\beamer@sectionintoc {4}{Solução genérica}{37}{0}{4}
+\beamer@sectionintoc {5}{Conclusão}{45}{0}{5}

@@ -1,0 +1,13 @@
+\frametitle{Coleção - Por valor - Uso}
+\begin{lstlisting}[
+    gobble=0,
+    linebackgroundcolor={%
+      \btLstHL<1>{2}%
+  }]
+struct MainPresenter {
+  presenters<ToolXPresenter> toolxs;
+};
+
+void MainPresenter::openToolX()
+{ toolxs.instance(view).show(); }
+\end{lstlisting}
