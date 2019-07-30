@@ -21,9 +21,10 @@ public:
     coruja::any_connection height_conn;
 public Q_SLOTS:
     void height_change_slot(double v) {
-        if(height_conn == coruja::any_connection{}) return;
-        auto bc = coruja::make_scoped_blocked_connection(height_conn);
-        on_height_change(v);
+        if(height_conn != coruja::any_connection{}) {
+            auto bc = coruja::make_scoped_blocked_connection(height_conn);
+            on_height_change(v);
+        } else on_height_change(v);
     }
 };
 

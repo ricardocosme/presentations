@@ -226,16 +226,12 @@ public Q_SLOTS:
 //inicializa view
 view.height.setValue(person.height);
 
-//atualiza modelo
+//visão atualiza modelo
 _conn = view.on_height_change.connect(
   [&](double v){ person.height = v; });
 \end{lstlisting}
 \only<3->{
-  Modelo não observável
-  \begin{itemize}
-    \item<3->{E se o modelo tem múltiplas visões?}
-    \item<4->{Solução: Padrão observador }
-  \end{itemize}
+  Problema: múltiplas visões para o modelo
 }
 \end{frame}
 
@@ -245,15 +241,20 @@ _conn = view.on_height_change.connect(
     gobble=0,
     linebackgroundcolor={%
       \btLstHL<1>{1}%
-      \btLstHL<2->{3-4}%
+      \btLstHL<2->{8-9}%
   }]
 struct person_t { coruja::object<double> height; };
 
+//visão atualiza modelo
+_conn = view.on_height_change.connect(
+  [&](double v){ person.height = v; });
+
+//inicializa view e modelo atualiza visão
 conn_ = person.height.for_each(
   [&](double v){ view.height.setValue(v); });
 \end{lstlisting}
 \only<3->{
-  Ciclo view -> model -> view
+  Problema: Ciclo view -> model -> view
 }
 \end{frame}
 
@@ -263,15 +264,54 @@ conn_ = person.height.for_each(
     gobble=0,
     linebackgroundcolor={%
       \btLstHL<1>{1}%
-      \btLstHL<2>{3-7}%
+      \btLstHL<2>{5-6}%
   }]
 view.height_conn = conn_.get();
 
 void view_t::height_change_slot(double v) {
-  if(height_conn == coruja::any_connection{}) return;
-  auto bc = make_scoped_blocked_connection(height_conn);
-  on_height_change(v);
+  if(height_conn != coruja::any_connection{}) {
+    auto bc = make_scoped_blocked_connection(height_conn);
+    on_height_change(v);
+  } else on_height_change(v);
 }
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile,t]{Solução Adhoc \#2 - Modelo observável}
+\lstset{basicstyle=\tiny\sffamily}
+\begin{lstlisting}[
+    gobble=0,
+    linebackgroundcolor={%
+      \btLstHL<1>{1}%
+      \btLstHL<2>{2-21}%
+      \btLstHL<3>{22-26}%
+  }]
+struct person_t { coruja::object<double> height; };
+class view_t : public QObject {
+  Q_OBJECT
+public:
+  view_t() : height(&window) {
+    QObject::connect(&height, SIGNAL(valueChanged(double)),
+                     this, SLOT(height_change_slot(double)));
+  }
+  virtual ~view_t() = default;
+  QMainWindow window;
+  QDoubleSpinBox height;
+  coruja::signal<void(double)> on_height_change;
+  coruja::any_connection height_conn;
+public Q_SLOTS:
+  void height_change_slot(double v) {
+    if(height_conn != coruja::any_connection{}) {
+      auto bc = coruja::make_scoped_blocked_connection(height_conn);
+      on_height_change(v);
+    } else on_height_change(v);
+  }
+};
+_conn_0 =  person.height.for_each(
+  [&](double v){ view.height.setValue(v); });
+view.height_conn = conn_0.get();
+_conn_1 = view.on_height_change.connect(
+  [&](double v){ person.height = v; });
 \end{lstlisting}
 \end{frame}
 
@@ -283,8 +323,27 @@ void view_t::height_change_slot(double v) {
     gobble=0,
     linebackgroundcolor={%
       \btLstHL<1>{1}%
-      \btLstHL<2>{4-8}%
+      \btLstHL<2>{10,12}%
   }]
+struct person_t { coruja::object<double> height; };
+  
+struct view_t {
+  QMainWindow window;
+private:    
+  QDoubleSpinBox _height;
+public:    
+  view_t(coruja::object<double>& mheight)
+    : _height(&window)
+    , height(mheight, _height)
+  {}
+  saci::qt::spinbox height;
+};
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}[fragile,t]{Solução Saci}
+\lstset{basicstyle=\scriptsize\sffamily}
+\begin{lstlisting}
 struct person_t { coruja::object<double> height; };
 
 struct view_t : window_t {

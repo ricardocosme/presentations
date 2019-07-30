@@ -13,13 +13,15 @@ struct person_t {
 };
 
 struct view_t {
+    QMainWindow window;
+private:    
+    QDoubleSpinBox _height;
+public:    
     view_t(coruja::object<double>& mheight)
         : _height(&window)
         , height(mheight, _height)
         // , height(mheight, child<QDoubleSpinBox>("height"))
     {}
-    QMainWindow window;
-    QDoubleSpinBox _height;
     saci::qt::spinbox height;
 };
 
