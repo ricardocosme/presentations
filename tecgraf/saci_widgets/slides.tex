@@ -28,28 +28,28 @@
 \usepackage{listings}
 \usepackage{dirtree}
 
-%% \usepackage{lstlinebgrd}
+\usepackage{lstlinebgrd}
 
 %% hack from https://tex.stackexchange.com/questions/451532/recent-issues-with-lstlinebgrd-package-with-listings-after-the-latters-updates
-\makeatletter
-\let\old@lstKV@SwitchCases\lstKV@SwitchCases
-\def\lstKV@SwitchCases#1#2#3{}
-\makeatother
-\usepackage{lstlinebgrd}
-\makeatletter
-\let\lstKV@SwitchCases\old@lstKV@SwitchCases
+% \makeatletter
+% \let\old@lstKV@SwitchCases\lstKV@SwitchCases
+% \def\lstKV@SwitchCases#1#2#3{}
+% \makeatother
+% \usepackage{lstlinebgrd}
+% \makeatletter
+% \let\lstKV@SwitchCases\old@lstKV@SwitchCases
 
-\lst@Key{numbers}{none}{%
-    \def\lst@PlaceNumber{\lst@linebgrd}%
-    \lstKV@SwitchCases{#1}%
-    {none:\\%
-     left:\def\lst@PlaceNumber{\llap{\normalfont
-                \lst@numberstyle{\thelstnumber}\kern\lst@numbersep}\lst@linebgrd}\\%
-     right:\def\lst@PlaceNumber{\rlap{\normalfont
-                \kern\linewidth \kern\lst@numbersep
-                \lst@numberstyle{\thelstnumber}}\lst@linebgrd}%
-    }{\PackageError{Listings}{Numbers #1 unknown}\@ehc}}
-\makeatother
+% \lst@Key{numbers}{none}{%
+%     \def\lst@PlaceNumber{\lst@linebgrd}%
+%     \lstKV@SwitchCases{#1}%
+%     {none:\\%
+%      left:\def\lst@PlaceNumber{\llap{\normalfont
+%                 \lst@numberstyle{\thelstnumber}\kern\lst@numbersep}\lst@linebgrd}\\%
+%      right:\def\lst@PlaceNumber{\rlap{\normalfont
+%                 \kern\linewidth \kern\lst@numbersep
+%                 \lst@numberstyle{\thelstnumber}}\lst@linebgrd}%
+%     }{\PackageError{Listings}{Numbers #1 unknown}\@ehc}}
+% \makeatother
 
 \usepackage{hyperref}
 \usepackage{fontspec}
@@ -148,7 +148,7 @@ xrightmargin=0.5em,
 %--------------------------------------------------------------------------
 % General presentation settings
 %--------------------------------------------------------------------------
-\title{Widgets da Saci}
+\title{saci::qt::spinbox}
 \subtitle{Usando \texttt{coruja::object<T>} como modelos em widgets Qt}
 \date{\today}
 \author{Ricardo Cosme}
@@ -315,7 +315,7 @@ _conn_1 = view.on_height_change.connect(
 \end{lstlisting}
 \end{frame}
 
-\section{Widgets Saci}
+\section{saci::qt::spinbox}
 
 \begin{frame}[fragile,t]{Solução Saci}
 \lstset{basicstyle=\scriptsize\sffamily}
@@ -355,306 +355,56 @@ struct view_t : window_t {
 \end{lstlisting}
 \end{frame}
 
-\begin{frame}{Instâncias}
-  Classes não deveriam ser responsáveis pelo \textit{lifetime} de instâncias
-  \begin{itemize}
-  \item<1->Lógica estranha em C++
-  \item<2->Hoje é {\Medium uma} instância, amanhã pode ser {\Medium N}
-  \item<3->Por que sou obrigado a usar alocação dinâmica?
-  \end{itemize}
-\end{frame}
-
-\begin{frame}{Mau uso}
-  \begin{itemize}
-  \item<1->Janelas filhas (Qual é a janela pai(dono)?)
-  \item<2->Managers (Projeto como dono?)
-  \end{itemize}
-\end{frame}
-
-\begin{frame}{Please!}
-  \begin{itemize}
-  \item<1-> Não use \textit{Singletons} indiscriminadamente
-  \item<2-> Suícidio não é bom na vida real nem na programação
-    \begin{itemize}
-    \item<2-> \texttt{delete this;}
-    \end{itemize}
-  \end{itemize}
-\end{frame}
-
-\section{Janelas filha (Single)}
-
-\begin{frame}[fragile,t]{Janela filha (Single)}
+\begin{frame}[fragile,t]{Solução Saci}
+\lstset{basicstyle=\scriptsize\sffamily}
 \begin{lstlisting}[
     gobble=0,
     linebackgroundcolor={%
-      \btLstHL<1>{1-10}%
-      \btLstHL<2>{12-13}%
-    }]
-class ToolXPresenter {
-  ToolXPresenter() = default;
-  static ToolXPresenter* _instance;
-public:    
-  static ToolXPresenter& instance() {
-    if(!_instance)
-      _instance = new ToolXPresenter();
-    return *_instance;
-  }
-  void close() { delete this; }
-};
-void MainPresenter::openToolX() 
-{ ToolXPresenter::instance().show(); }
-\end{lstlisting}
-\end{frame}
-
-\begin{frame}[fragile,t]{Solução AdHoc}
-\begin{lstlisting}[
-    gobble=0,
-    linebackgroundcolor={%
-      \btLstHL<1>{2}%
-      \btLstHL<2>{4-6}%
+      \btLstHL<1>{1-2}%
+      \btLstHL<2->{4-8}%
   }]
-class ToolXPresenter {
-  function<void()> _onClose;
-public:    
-  template<typename FunctionObject>
-  void onClose(FunctionObject cbk)
-  { _onClose = std::move(cbk); }
-};
+template<typename Model>
+spinbox::spinbox(Model& model, QDoubleSpinBox& widget)
+
+const QDoubleSpinBox& spinbox::widget() const noexcept
+{ return *_widget; }
+
+QDoubleSpinBox& spinbox::widget() noexcept
+{ return *_widget; }
 \end{lstlisting}
-\end{frame}
-
-\begin{frame}[fragile,t]{Solução AdHoc}
-\begin{lstlisting}[
-    gobble=0,
-    linebackgroundcolor={%
-      \btLstHL<1>{2}%
-      \btLstHL<2>{6}%
-      \btLstHL<3>{7-8}%
-      \btLstHL<4>{9}%
-      \btLstHL<5>{10}%
-  }]
-struct MainPresenter {
-  unique_ptr<ToolXPresenter> toolx;
-};
-
-void MainPresenter::openToolX() {
-  if(!toolx) {
-    unique_ptr<ToolXPresenter> o
-      (new ToolXPresenter(view));
-    o->onClose([this]{ toolx.release(); });
-    toolx = std::move(o);
-  }
-  toolx.show();
+\only<3->{
+\texttt{spinbox}, \texttt{checkbox} e \texttt{radio\_btn}, 
 }
-\end{lstlisting}
 \end{frame}
 
-\begin{frame}[fragile,t]{Solução AdHoc - Por valor}
-\begin{lstlisting}[
-    gobble=0,
-    linebackgroundcolor={%
-      \btLstHL<1>{3}%
-      \btLstHL<2>{7}%
-      \btLstHL<3>{8}%
-      \btLstHL<4>{9-10}%
-  }]
-//MainPresenter models SemiRegular
-struct MainPresenter {
-  ToolXPresenter toolx;
-};
-
-void MainPresenter::openToolX() {
-  if(toolx == ToolXPresenter()) {
-    toolx = ToolXPresenter(view);
-    toolx.onClose
-      ([this]{ toolx = ToolXPresenter(); });
-  }
-  toolx->show();
-}
-\end{lstlisting}
-\end{frame}
-
-\section{Janelas filhas (Coleção)}
-
-\begin{frame}[fragile,t]{Janelas filhas (Coleção)}
-\begin{lstlisting}[
-    gobble=0,
-    linebackgroundcolor={%
-      \btLstHL<1>{3-4}%
-      \btLstHL<2>{8-9}%
-    }]
-struct ToolXPresenter {
-  ToolXPresenter(view) {}
-  //Não posso alocar ToolXPresenter na pilha
-  void close() { delete this; }
-};
-
-void MainPresenter::openToolX() {
-  //Memory leak?! Quem é o dono?
-  auto toolx = new ToolXPresenter(view);
-  toox->show();
-}
-\end{lstlisting}
-\end{frame}
-
-\begin{frame}[fragile,t]{Solução AdHoc}
-\begin{lstlisting}[
-    gobble=0,
-    linebackgroundcolor={%
-      \btLstHL<1>{2}%
-      \btLstHL<2>{6-7}%
-      \btLstHL<3>{8-9}%
-      \btLstHL<4>{10}%
-  }]
-struct MainPresenter {
-  list<unique_ptr<ToolXPresenter>> toolxs;
-};
-
-void MainPresenter::openToolX() {
-  auto it = toolxs.emplace
-    (toolxs.end(), new ToolXPresenter(view);
-  it->get()->onClose
-    ([this, it]{ toolxs.erase(it); });
-  it->get()->show();
-}
-\end{lstlisting}
-\end{frame}
-
-\section{Solução genérica}
-
-\begin{frame}[fragile,t]{Single - Alocação dinâmica - Implementação}
+\begin{frame}[fragile,t]{coruja::for\_each}
+Merge de ObservableObject para uma única reação
 \lstset{basicstyle=\scriptsize\sffamily}
 \begin{lstlisting}
-template<typename Presenter>
-class dyn_presenter {
-  std::unique_ptr<Presenter> _presenter;
-public:
-  dyn_presenter() = default;
-  
-  Presenter* operator->() const noexcept
-  { return _presenter.get(); }
-  
-  template<typename... Args>
-  Presenter& instance(Args&&... args) {
-    if(!_presenter) {
-      std::unique_ptr<Presenter> o(
-          new Presenter(std::forward<Args>(args)...));
-      o->onClose([this]{ _presenter.release(); });
-      _presenter = std::move(o);
-    }
-    return *_presenter;
-  }
-};
+auto conn = for_each(draw_person_t{}, 
+                     person.height, 
+                     person.weight);
 \end{lstlisting}
 \end{frame}
 
-\begin{frame}[fragile,t]{Single - Alocação dinâmica - Uso}
-\begin{lstlisting}[
-    gobble=0,
-    linebackgroundcolor={%
-      \btLstHL<1>{2}%
-      \btLstHL<2>{6}%
-  }]
-struct MainPresenter {
-  dyn_presenter<ToolXPresenter> toolx;
-};
-
-void MainPresenter::openToolX()
-{ toolx.instance(view).show(); }
-\end{lstlisting}
-\end{frame}
-
-\begin{frame}[fragile,t]{Single - Por valor - Uso}
-\begin{lstlisting}[
-    gobble=0,
-    linebackgroundcolor={%
-      \btLstHL<1>{6}%
-  }]
-struct MainPresenter {
-  presenter<ToolXPresenter> toolx;
-};
-
-void MainPresenter::openToolX()
-{ SACI_SINGLE_OF(toolx, view).show(); }
-\end{lstlisting}
-\end{frame}
-
-\begin{frame}[fragile,t]{Coleção - Alocação dinâmica - Implementação}
+\begin{frame}[fragile,t]{TODO}
 \lstset{basicstyle=\scriptsize\sffamily}
 \begin{lstlisting}[
     gobble=0,
     linebackgroundcolor={%
+      \btLstHL<1->{1-2}%
   }]
-template<typename Presenter>
-class dyn_presenters {
-  std::list<std::unique_ptr<Presenter>> _presenters;
-public:
-  dyn_presenters() = default;
-  
-  template<typename... Args>
-  Presenter& instance(Args&&... args) {
-    auto it = _presenters.emplace
-      (_presenters.end(),
-       new Presenter(std::forward<Args>(args)...));
-    it->get()->onClose([this, it]{ _presenters.erase(it); });
-    return **it;
-  }
-};
+template<typename ObservableObjectView>
+void spinbox::enable(ObservableObjectView&&)
 \end{lstlisting}
-\end{frame}
-
-\begin{frame}[fragile,t]{Coleção - Alocação dinâmica - Uso}
-\begin{lstlisting}[
-    gobble=0,
-    linebackgroundcolor={%
-      \btLstHL<1>{2,6}%
-  }]
-struct MainPresenter {
-  dyn_presenters<ToolXPresenter> toolxs;
-};
-
-void MainPresenter::openToolX()
-{ toolxs.instance(view).show(); }
-\end{lstlisting}
-\end{frame}
-
-\begin{frame}[fragile,t]{Coleção - Por valor - Uso}
-\begin{lstlisting}[
-    gobble=0,
-    linebackgroundcolor={%
-      \btLstHL<1>{2}%
-  }]
-struct MainPresenter {
-  presenters<ToolXPresenter> toolxs;
-};
-
-void MainPresenter::openToolX()
-{ toolxs.instance(view).show(); }
-\end{lstlisting}
-\end{frame}
-
-\section{Conclusão}
-
-\begin{frame}{Guideline}
+\only<2->{
   \begin{itemize}
-  \item<1-> Classe não cria instâncias próprias
-  \item<2-> Classe não é responsável por sua destruição
-  \item<3-> Classe não assume se será instanciada dinamicamente ou não
-  \item<4-> Procure energicamente por um pai(dono) para o objeto
-  \end{itemize}
-\end{frame}
-
-\begin{frame}{Obrigado}
-  \begin{itemize}
-  \item Apresentação
+  \item<1->{Abstração da GUI}
     \begin{itemize}
-      \item \href{https://github.com/ricardocosme/presentations/tecgraf/singleton\_suicide}{github.com/ricardocosme/presentations}
-    \end{itemize}
-  \item Solução genérica
-    \begin{itemize}
-      \item \href{https://github.com/ricardocosme/saci}{github.com/ricardocosme/saci}
+    \item<2->{Reuso de código ao trocar de engine}
     \end{itemize}
   \end{itemize}
+}
 \end{frame}
 
 \end{document}
