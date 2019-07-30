@@ -28,28 +28,28 @@
 \usepackage{listings}
 \usepackage{dirtree}
 
-\usepackage{lstlinebgrd}
+%% \usepackage{lstlinebgrd}
 
 %% hack from https://tex.stackexchange.com/questions/451532/recent-issues-with-lstlinebgrd-package-with-listings-after-the-latters-updates
-% \makeatletter
-% \let\old@lstKV@SwitchCases\lstKV@SwitchCases
-% \def\lstKV@SwitchCases#1#2#3{}
-% \makeatother
-% \usepackage{lstlinebgrd}
-% \makeatletter
-% \let\lstKV@SwitchCases\old@lstKV@SwitchCases
+\makeatletter
+\let\old@lstKV@SwitchCases\lstKV@SwitchCases
+\def\lstKV@SwitchCases#1#2#3{}
+\makeatother
+\usepackage{lstlinebgrd}
+\makeatletter
+\let\lstKV@SwitchCases\old@lstKV@SwitchCases
 
-% \lst@Key{numbers}{none}{%
-%     \def\lst@PlaceNumber{\lst@linebgrd}%
-%     \lstKV@SwitchCases{#1}%
-%     {none:\\%
-%      left:\def\lst@PlaceNumber{\llap{\normalfont
-%                 \lst@numberstyle{\thelstnumber}\kern\lst@numbersep}\lst@linebgrd}\\%
-%      right:\def\lst@PlaceNumber{\rlap{\normalfont
-%                 \kern\linewidth \kern\lst@numbersep
-%                 \lst@numberstyle{\thelstnumber}}\lst@linebgrd}%
-%     }{\PackageError{Listings}{Numbers #1 unknown}\@ehc}}
-% \makeatother
+\lst@Key{numbers}{none}{%
+    \def\lst@PlaceNumber{\lst@linebgrd}%
+    \lstKV@SwitchCases{#1}%
+    {none:\\%
+     left:\def\lst@PlaceNumber{\llap{\normalfont
+                \lst@numberstyle{\thelstnumber}\kern\lst@numbersep}\lst@linebgrd}\\%
+     right:\def\lst@PlaceNumber{\rlap{\normalfont
+                \kern\linewidth \kern\lst@numbersep
+                \lst@numberstyle{\thelstnumber}}\lst@linebgrd}%
+    }{\PackageError{Listings}{Numbers #1 unknown}\@ehc}}
+\makeatother
 
 \usepackage{hyperref}
 \usepackage{fontspec}
@@ -148,7 +148,7 @@ xrightmargin=0.5em,
 %--------------------------------------------------------------------------
 % General presentation settings
 %--------------------------------------------------------------------------
-\title{Widgets com suporte a modelos observáveis}
+\title{Widgets da Saci}
 \subtitle{Usando \texttt{coruja::object<T>} como modelos em widgets Qt}
 \date{\today}
 \author{Ricardo Cosme}
@@ -182,33 +182,99 @@ xrightmargin=0.5em,
 %--------------------------------------------------------------------------
 % Content
 %--------------------------------------------------------------------------
-\section{Padrão Singleton}
+\section{Widgets Qt}
 
-\begin{frame}[containsverbatim]{Padrão Singleton}
-\begingroup
-\setbeamercolor{block title}{bg=hsrmSec2Dark}
-\setbeamercolor{block body}{bg=hsrmSec2}
-\begin{block}{Objetivo}
-  Instância {\Medium única} de uma classe que é obtida através de um ponto de acesso {\Medium global}. 
-\footnote{Design Patterns: Elements Of Reusable Object-Oriented Software (1994, Addison Wesley)}
-\end{block}
-\endgroup
+\begin{frame}[fragile,t]{Solução Adhoc \#1 - Modelo não observável}
+\lstset{basicstyle=\scriptsize\sffamily}
+\begin{lstlisting}[
+    gobble=0,
+    linebackgroundcolor={%
+      \btLstHL<1>{1}%
+      \btLstHL<2>{3}%
+      \btLstHL<3>{11-13}%
+      \btLstHL<4>{15-16,7-8}%
+  }]
+struct person_t { double height; };
+
+class view_t : public QObject {
+  Q_OBJECT
+public:
+  view_t() : height(&window) {
+    QObject::connect(&height, SIGNAL(valueChanged(double)),
+                     this, SLOT(height_change_slot(double)));
+  }
+  virtual ~view_t() = default;
+  QMainWindow window;
+  QDoubleSpinBox height;
+  coruja::signal<void(double)> on_height_change;
+public Q_SLOTS:
+  void height_change_slot(double v)
+  { on_height_change(v); }
+};
+
+\end{lstlisting}
 \end{frame}
 
-\begin{frame}{Em suma}
-  Singleton = global + instância única
-\end{frame}
+\begin{frame}[fragile,t]{Solução Adhoc \#1 - Modelo não observável}
+\lstset{basicstyle=\scriptsize\sffamily}
+\begin{lstlisting}[
+    gobble=0,
+    linebackgroundcolor={%
+      \btLstHL<1>{2}%
+      \btLstHL<2->{5-6}%
+  }]
+//inicializa view
+view.height.setValue(person.height);
 
-\begin{frame}{Globais}
-  Globais não são bem-vindas
+//atualiza modelo
+_conn = view.on_height_change.connect(
+  [&](double v){ person.height = v; });
+\end{lstlisting}
+\only<3->{
+  Modelo não observável
   \begin{itemize}
-  \item<1->Compartilhamento de estado
-    \begin{itemize}
-    \item<1->Condições de corrida (computação moderna)
-    \item<2->Ineficiência na alocação e liberação de recursos
-    \item<3->Não há garantia de ordem na inicialização entres TUs
-    \item<4->Impossibilidade de \textit{reasoning} do código
-    \end{itemize}
+    \item<3->{E se o modelo tem múltiplas visões?}
+    \item<4->{Solução: Padrão observador }
+  \end{itemize}
+}
+\end{frame}
+
+\begin{frame}[fragile,t]{Solução Adhoc \#1 - Modelo não observável}
+\lstset{basicstyle=\scriptsize\sffamily}
+\begin{lstlisting}[
+    gobble=0,
+    linebackgroundcolor={%
+      \btLstHL<1>{1}%
+      \btLstHL<2>{3}%
+      \btLstHL<3>{11-13}%
+      \btLstHL<4>{15-16,7-8}%
+  }]
+struct person_t { double height; };
+
+class view_t : public QObject {
+  Q_OBJECT
+public:
+  view_t() : height(&window) {
+    QObject::connect(&height, SIGNAL(valueChanged(double)),
+                     this, SLOT(height_change_slot(double)));
+  }
+  virtual ~view_t() = default;
+  QMainWindow window;
+  QDoubleSpinBox height;
+  coruja::signal<void(double)> on_height_change;
+public Q_SLOTS:
+  void height_change_slot(double v)
+  { on_height_change(v); }
+};
+
+\end{lstlisting}
+\end{frame}
+
+\begin{frame}{Widgets Qt}
+  Widgets editáveis que refletem um modelo
+  \begin{itemize}
+  \item<1->Valor inicial do modelo é definido no widget.
+  \item<2->Alteração do valor modelo <-> visão
   \end{itemize}
 \end{frame}
 
