@@ -239,43 +239,61 @@ _conn = view.on_height_change.connect(
 }
 \end{frame}
 
-\begin{frame}[fragile,t]{Solução Adhoc \#1 - Modelo não observável}
+\begin{frame}[fragile,t]{Solução Adhoc \#2 - Modelo observável}
 \lstset{basicstyle=\scriptsize\sffamily}
 \begin{lstlisting}[
     gobble=0,
     linebackgroundcolor={%
       \btLstHL<1>{1}%
-      \btLstHL<2>{3}%
-      \btLstHL<3>{11-13}%
-      \btLstHL<4>{15-16,7-8}%
+      \btLstHL<2->{3-4}%
   }]
-struct person_t { double height; };
+struct person_t { coruja::object<double> height; };
 
-class view_t : public QObject {
-  Q_OBJECT
-public:
-  view_t() : height(&window) {
-    QObject::connect(&height, SIGNAL(valueChanged(double)),
-                     this, SLOT(height_change_slot(double)));
-  }
-  virtual ~view_t() = default;
-  QMainWindow window;
-  QDoubleSpinBox height;
-  coruja::signal<void(double)> on_height_change;
-public Q_SLOTS:
-  void height_change_slot(double v)
-  { on_height_change(v); }
-};
+conn_ = person.height.for_each(
+  [&](double v){ view.height.setValue(v); });
+\end{lstlisting}
+\only<3->{
+  Ciclo view -> model -> view
+}
+\end{frame}
 
+\begin{frame}[fragile,t]{Solução Adhoc \#2 - Modelo observável}
+\lstset{basicstyle=\scriptsize\sffamily}
+\begin{lstlisting}[
+    gobble=0,
+    linebackgroundcolor={%
+      \btLstHL<1>{1}%
+      \btLstHL<2>{3-7}%
+  }]
+view.height_conn = conn_.get();
+
+void view_t::height_change_slot(double v) {
+  if(height_conn == coruja::any_connection{}) return;
+  auto bc = make_scoped_blocked_connection(height_conn);
+  on_height_change(v);
+}
 \end{lstlisting}
 \end{frame}
 
-\begin{frame}{Widgets Qt}
-  Widgets editáveis que refletem um modelo
-  \begin{itemize}
-  \item<1->Valor inicial do modelo é definido no widget.
-  \item<2->Alteração do valor modelo <-> visão
-  \end{itemize}
+\section{Widgets Saci}
+
+\begin{frame}[fragile,t]{Solução Saci}
+\lstset{basicstyle=\scriptsize\sffamily}
+\begin{lstlisting}[
+    gobble=0,
+    linebackgroundcolor={%
+      \btLstHL<1>{1}%
+      \btLstHL<2>{4-8}%
+  }]
+struct person_t { coruja::object<double> height; };
+
+struct view_t : window_t {
+    view_t(coruja::object<double>& mheight)
+    : height(mheight, child<QDoubleSpinBox>("height")) {}
+    
+    saci::qt::spinbox height;
+};
+\end{lstlisting}
 \end{frame}
 
 \begin{frame}{Instâncias}

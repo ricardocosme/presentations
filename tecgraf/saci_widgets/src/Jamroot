@@ -17,6 +17,10 @@ local qt_root_path = [ os.environ QT_ROOT ] ;
 if ! $(qt_root_path)
 { qt_root_path = "../qt" ; }
 
+local saci_root_path = [ os.environ SACI_ROOT ] ;
+if ! $(saci_root_path)
+{ saci_root_path = "../saci" ; }
+
 use-project coruja : $(boost_root_path) ;
 
 project Qt
@@ -47,7 +51,27 @@ exe adhoc
   ;
 explicit adhoc ;
 
+exe adhoc_2
+  : adhoc_2.cpp
+    adhoc_2_view_t.cpp
+  : <library>/Qt//QtCore
+    <library>/Qt//QtGui
+  ;
+explicit adhoc_2 ;
+
+exe saci
+  : saci.cpp
+    view_to_model.cpp
+  : <library>/Qt//QtCore
+    <library>/Qt//QtGui
+    <include>$(saci_root_path)/include
+
+  ;
+explicit saci ;
+
 install stage
   : adhoc
+    adhoc_2
+    saci
   ;
   
